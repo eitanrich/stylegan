@@ -513,7 +513,9 @@ def create_from_images(tfrecord_dir, image_dir, shuffle):
         error('Input images must have the same width and height')
     if resolution != 2 ** int(np.floor(np.log2(resolution))):
         error('Input image resolution must be a power-of-two')
-    if channels not in [1, 3]:
+    if channels == 4:
+        print('Ignoring alpha channel.')
+    elif channels not in [1, 3]:
         error('Input images must be stored as RGB or grayscale')
 
     with TFRecordExporter(tfrecord_dir, len(image_filenames)) as tfr:
@@ -523,7 +525,7 @@ def create_from_images(tfrecord_dir, image_dir, shuffle):
             if channels == 1:
                 img = img[np.newaxis, :, :] # HW => CHW
             else:
-                img = img.transpose([2, 0, 1]) # HWC => CHW
+                img = img[:, :, :3].transpose([2, 0, 1]) # HWC => CHW
             tfr.add_image(img)
 
 #----------------------------------------------------------------------------
