@@ -77,6 +77,13 @@ def D_wgan_gp(G, D, opt, training_set, minibatch_size, reals, labels, # pylint: 
     loss += epsilon_penalty * wgan_epsilon
     return loss
 
+#def D_wgan_gp_plus_z_diff(G, D, opt, training_set, minibatch_size, reals, labels, # pylint: disable=unused-argument
+#                          wgan_lambda     = 10.0,     # Weight for the gradient penalty term.
+#                          wgan_epsilon    = 0.001,    # Weight for the epsilon term, \epsilon_{drift}.
+#                          wgan_target     = 1.0):     # Target value for gradient magnitudes.
+#
+#    return D_wgan_gp(G, D, opt, training_set, minibatch_size, reals, labels, wgan_lambda, wgan_epsilon, wgan_target)
+
 #----------------------------------------------------------------------------
 # Hinge loss functions. (Use G_wgan with these)
 

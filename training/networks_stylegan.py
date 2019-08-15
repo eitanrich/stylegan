@@ -567,6 +567,7 @@ def D_basic(
     num_channels        = 1,            # Number of input color channels. Overridden based on dataset.
     resolution          = 32,           # Input resolution. Overridden based on dataset.
     label_size          = 0,            # Dimensionality of the labels, 0 if no labels. Overridden based on dataset.
+    aux_output_size     = 0,            # Auxilliary output
     fmap_base           = 8192,         # Overall multiplier for the number of feature maps.
     fmap_decay          = 1.0,          # log2 feature map reduction when doubling the resolution.
     fmap_max            = 512,          # Maximum number of feature maps in any layer.
@@ -583,6 +584,7 @@ def D_basic(
 
     resolution_log2 = int(np.log2(resolution))
     assert resolution == 2**resolution_log2 and resolution >= 4
+    assert label_size == 0 or aux_output_size == 0
     def nf(stage): return min(int(fmap_base / (2.0 ** (stage * fmap_decay))), fmap_max)
     def blur(x): return blur2d(x, blur_filter) if blur_filter else x
     if structure == 'auto': structure = 'linear' if is_template_graph else 'recursive'
@@ -614,7 +616,7 @@ def D_basic(
                 with tf.variable_scope('Dense0'):
                     x = act(apply_bias(dense(x, fmaps=nf(res-2), gain=gain, use_wscale=use_wscale)))
                 with tf.variable_scope('Dense1'):
-                    x = apply_bias(dense(x, fmaps=max(label_size, 1), gain=1, use_wscale=use_wscale))
+                    x = apply_bias(dense(x, fmaps=max(label_size + aux_output_size, 1), gain=1, use_wscale=use_wscale))
             return x
 
     # Fixed structure: simple and efficient, but does not support progressive growing.

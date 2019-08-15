@@ -16,6 +16,43 @@ from metrics import metric_base
 
 
 #----------------------------------------------------------------------------
+# Training for Eitan's 128x128 CLEVR Fixed+random conditional experiment
+
+if 1:
+    desc          = 'sgan'                                                                 # Description string included in result subdir name.
+    train         = EasyDict(run_func_name='training.training_loop.training_loop')         # Options for training loop.
+    G             = EasyDict(func_name='training.networks_stylegan.G_style',
+                             latent_size=128, dlatent_size=128, mapping_fmaps=128, use_noise=True)  # Options for generator network.
+    D             = EasyDict(func_name='training.networks_stylegan.D_basic')               # Options for discriminator network.
+    G_opt         = EasyDict(beta1=0.0, beta2=0.99, epsilon=1e-8)                          # Options for generator optimizer.
+    D_opt         = EasyDict(beta1=0.0, beta2=0.99, epsilon=1e-8)                          # Options for discriminator optimizer.
+    G_loss        = EasyDict(func_name='training.loss.G_logistic_nonsaturating')           # Options for generator loss.
+    D_loss        = EasyDict(func_name='training.loss.D_logistic_simplegp', r1_gamma=10.0) # Options for discriminator loss.
+    dataset       = EasyDict()                                                             # Options for load_dataset().
+    sched         = EasyDict()                                                             # Options for TrainingSchedule.
+    grid          = EasyDict(size='1080p', layout='random')                                   # Options for setup_snapshot_image_grid().
+    metrics       = [metric_base.fid50k]                                                   # Options for MetricGroup.
+    submit_config = dnnlib.SubmitConfig()                                                  # Options for dnnlib.submit_run().
+    tf_config     = {'rnd.np_random_seed': 1000}                                           # Options for tflib.init_tf().
+
+    # Dataset.
+    desc += '-clvr_pairs_rnd';   dataset = EasyDict(tfrecord_dir='clevr_pairs_rnd');  train.mirror_augment = True
+
+    # Number of GPUs.
+    # desc += '-1gpu'; submit_config.num_gpus = 1; sched.minibatch_base = 4; sched.minibatch_dict = {4: 128, 8: 128, 16: 128, 32: 64, 64: 32, 128: 16, 256: 8, 512: 4}
+    desc += '-2gpu'; submit_config.num_gpus = 2; sched.minibatch_base = 8; sched.minibatch_dict = {4: 256, 8: 256, 16: 128, 32: 64, 64: 32, 128: 16, 256: 8}
+    #desc += '-4gpu'; submit_config.num_gpus = 4; sched.minibatch_base = 16; sched.minibatch_dict = {4: 512, 8: 256, 16: 128, 32: 64, 64: 32, 128: 16}
+    # desc += '-8gpu'; submit_config.num_gpus = 8; sched.minibatch_base = 32; sched.minibatch_dict = {4: 512, 8: 256, 16: 128, 32: 64, 64: 32}
+
+    # Default options.
+    train.total_kimg = 10000
+    sched.lod_initial_resolution = 8
+    sched.G_lrate_dict = {128: 0.0015, 256: 0.002, 512: 0.003, 1024: 0.003}
+    sched.D_lrate_dict = EasyDict(sched.G_lrate_dict)
+
+
+
+#----------------------------------------------------------------------------
 # Training for Eitan's 128x128 CLEVR pairs / singles datasets
 
 if 1:
