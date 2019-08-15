@@ -69,7 +69,7 @@ class TFRecordExporter:
         if self.shape is None:
             self.shape = img.shape
             self.resolution_log2 = int(np.log2(self.shape[1]))
-            assert self.shape[0] in [1, 3]
+            assert self.shape[0] in [1, 3, 6]
             assert self.shape[1] == self.shape[2]
             assert self.shape[1] == 2**self.resolution_log2
             tfr_opt = tf.python_io.TFRecordOptions(tf.python_io.TFRecordCompressionType.NONE)
@@ -528,6 +528,35 @@ def create_from_images(tfrecord_dir, image_dir, shuffle):
                 img = img[:, :, :3].transpose([2, 0, 1]) # HWC => CHW
             tfr.add_image(img)
 
+
+def create_from_image_pairs(tfrecord_dir, image_dir_a, image_dir_b, shuffle):
+    image_filenames = []
+    for image_dir in [image_dir_a, image_dir_b]:
+        print('Loading images from "%s"' % image_dir)
+        image_filenames.append(sorted(glob.glob(os.path.join(image_dir, '*'))))
+        if len(image_filenames[-1]) == 0:
+            error('No input images found')
+
+    img = np.asarray(PIL.Image.open(image_filenames[0][0]))
+    resolution = img.shape[0]
+    channels = img.shape[2] if img.ndim == 3 else 1
+    if img.shape[1] != resolution:
+        error('Input images must have the same width and height')
+    if resolution != 2 ** int(np.floor(np.log2(resolution))):
+        error('Input image resolution must be a power-of-two')
+    if channels == 4:
+        print('Ignoring alpha channel.')
+    elif not channels == 3:
+        error('Input images must be stored as RGB or RGBA')
+
+    with TFRecordExporter(tfrecord_dir, len(image_filenames[0])) as tfr:
+        order = tfr.choose_shuffled_order() if shuffle else np.arange(len(image_filenames[0]))
+        for idx in range(order.size):
+            img_a = np.asarray(PIL.Image.open(image_filenames[0][order[idx]]))
+            img_b = np.asarray(PIL.Image.open(image_filenames[1][order[idx]]))
+            img = np.concatenate((img_a[:, :, :3], img_b[:, :, :3]), axis=2).transpose([2, 0, 1]) # HWC => CHW
+            tfr.add_image(img)
+
 #----------------------------------------------------------------------------
 
 def create_from_hdf5(tfrecord_dir, hdf5_filename, shuffle):
@@ -626,6 +655,13 @@ def execute_cmdline(argv):
                                             'create_from_images datasets/mydataset myimagedir')
     p.add_argument(     'tfrecord_dir',     help='New dataset directory to be created')
     p.add_argument(     'image_dir',        help='Directory containing the images')
+    p.add_argument(     '--shuffle',        help='Randomize image order (default: 1)', type=int, default=1)
+
+    p = add_command(    'create_from_image_pairs', 'Create dataset from two tied directories full of images.',
+                        'create_from_image_pairs datasets/mydataset myimagedir_a myimagedir_b')
+    p.add_argument(     'tfrecord_dir',     help='New dataset directory to be created')
+    p.add_argument(     'image_dir_a',        help='First directory containing images')
+    p.add_argument(     'image_dir_b',        help='Second directory containing images')
     p.add_argument(     '--shuffle',        help='Randomize image order (default: 1)', type=int, default=1)
 
     p = add_command(    'create_from_hdf5', 'Create dataset from legacy HDF5 archive.',
